@@ -27,6 +27,16 @@ const userSchema = new mongoose.Schema({
       return `/uploads/${value.replace(/^.*[\\/]/, "")}`;
     },
   },
+  verified: {
+    type: Boolean,
+    default: false,
+  },
+  otp: {
+    type: String,
+  },
+  otpExpires: {
+    type: Date,
+  },
   createdAt: {
     type: Date,
     default: Date.now,
