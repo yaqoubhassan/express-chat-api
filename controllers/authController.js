@@ -33,7 +33,7 @@ const registerUser = async (req, res) => {
 
     await user.save();
 
-    const emailHtml = emailVerificationTemplate(otp);
+    const emailHtml = emailVerificationTemplate(otp, otpExpires);
 
     await sendEmail(email, "Verify Your Email", emailHtml);
 
@@ -101,7 +101,7 @@ const resendOtp = async (req, res) => {
 
     if (user.verified) {
       return handleRequestAndServerErrors(
-        (error = null),
+        null,
         res,
         400,
         "error",
@@ -109,17 +109,29 @@ const resendOtp = async (req, res) => {
       );
     }
 
+    // Check if the previous OTP is older than 6 minutes
+    const currentTime = Date.now();
+    const otpAge = (currentTime - new Date(user.otpExpires).getTime()) / 1000; // in seconds
+
+    if (otpAge <= 240) {
+      // If OTP is less than or equal to 6 minutes old
+      const emailHtml = emailVerificationTemplate(user.otp, user.otpExpires);
+
+      await sendEmail(email, "Resend Verification Code", emailHtml);
+
+      return res.status(200).json({
+        status: "success",
+        message: "Verification code resent successfully.",
+      });
+    }
+
+    // Generate a new OTP if the previous one is older than 6 minutes
     const { otp, otpExpires } = generateOtp();
     user.otp = otp;
     user.otpExpires = otpExpires;
     await user.save();
 
-    const emailHtml = `
-      <h1>Email Verification</h1>
-      <p>Your new verification code id:</p>
-      <h2>${otp}</h2>
-      <p>This code will expire in 10 minutes</p>
-    `;
+    const emailHtml = emailVerificationTemplate(otp, otpExpires);
 
     await sendEmail(email, "Resend Verification Code", emailHtml);
 
