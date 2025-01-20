@@ -1,9 +1,14 @@
 const express = require("express");
-const { registerUser } = require("../controllers/authController");
+const {
+  registerUser,
+  verifyEmail,
+  resendOtp,
+} = require("../controllers/authController");
 
 const router = express.Router();
 
-//Register a new user
 router.post("/register", registerUser);
+router.post("/verify-email", verifyEmail);
+router.post("/resend-otp", resendOtp);
 
 module.exports = router;
