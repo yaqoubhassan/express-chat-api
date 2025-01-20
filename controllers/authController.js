@@ -4,6 +4,7 @@ const generateOtp = require("../utils/generateOtp");
 const generateToken = require("../utils/generateToken");
 const findUserByEmail = require("../middlewares/findUser");
 const handleRequestAndServerErrors = require("../utils/errorHandler");
+const { emailVerificationTemplate } = require("../utils/emailTemplates");
 
 const registerUser = async (req, res) => {
   const { name, email, password, passwordConfirmation } = req.body;
@@ -22,10 +23,6 @@ const registerUser = async (req, res) => {
         "error",
         "User already exists"
       );
-      // return res.status(400).json({
-      //   status: "error",
-      //   message: "User already exists",
-      // });
     }
 
     const user = new User({ name, email, password });
@@ -36,12 +33,7 @@ const registerUser = async (req, res) => {
 
     await user.save();
 
-    const emailHtml = `
-      <h1>Email Verification</h1>
-      <p>Your verification code is:</p>
-      <h2>${otp}</h2>
-      <p>This code will expire in 10 minutes</p>
-    `;
+    const emailHtml = emailVerificationTemplate(otp);
 
     await sendEmail(email, "Verify Your Email", emailHtml);
 
@@ -97,11 +89,7 @@ const verifyEmail = async (req, res) => {
       message: "Email verified successfully",
     });
   } catch (error) {
-    console.error(error);
-    res.status(500).json({
-      status: "failed",
-      message: "Server Error",
-    });
+    handleRequestAndServerErrors(error, res, 500, "failed", "Server Error");
   }
 };
 
@@ -112,10 +100,13 @@ const resendOtp = async (req, res) => {
     const user = await findUserByEmail(email);
 
     if (user.verified) {
-      return res.status(400).json({
-        status: "error",
-        message: "User is already verified",
-      });
+      return handleRequestAndServerErrors(
+        (error = null),
+        res,
+        400,
+        "error",
+        "User is already verified"
+      );
     }
 
     const { otp, otpExpires } = generateOtp();
@@ -137,11 +128,7 @@ const resendOtp = async (req, res) => {
       message: "Verification code resent successfully.",
     });
   } catch (error) {
-    console.error(error);
-    res.status(500).json({
-      status: "failed",
-      message: "Server error",
-    });
+    handleRequestAndServerErrors(error, res, 500, "failed", "Server Error");
   }
 };
 
