@@ -2,7 +2,7 @@ const User = require("../models/userModel");
 const sendEmail = require("../utils/sendEmail");
 const generateOtp = require("../utils/generateOtp");
 const generateToken = require("../utils/generateToken");
-const findUserByEmail = require("../middlewares/findUser");
+const findUserByEmail = require("../middleware/findUser");
 const handleRequestAndServerErrors = require("../utils/errorHandler");
 const { emailVerificationTemplate } = require("../utils/emailTemplates");
 
@@ -144,4 +144,40 @@ const resendOtp = async (req, res) => {
   }
 };
 
-module.exports = { registerUser, verifyEmail, resendOtp };
+const login = async (req, res) => {
+  const { email, password } = req.body;
+
+  try {
+    const user = await findUserByEmail(email);
+
+    if (!user.verified) {
+      return res.status(400).json({
+        status: "error",
+        message: "Please verify email before logging in.",
+      });
+    }
+
+    const isMatch = await user.comparePassword(password);
+    if (!isMatch) {
+      return res.status(400).json({
+        status: "error",
+        message: "Invalid credentials.",
+      });
+    }
+
+    res.status(200).json({
+      status: "success",
+      data: {
+        id: user._id,
+        name: user.name,
+        email: user.email,
+        token: generateToken(user._id),
+        createdAt: user.createdAt,
+      },
+    });
+  } catch (error) {
+    handleRequestAndServerErrors(error, res, 500, "fail", "Server Error");
+  }
+};
+
+module.exports = { registerUser, verifyEmail, resendOtp, login };
