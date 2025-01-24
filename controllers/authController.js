@@ -7,10 +7,10 @@ const handleRequestAndServerErrors = require("../utils/errorHandler");
 const { emailVerificationTemplate } = require("../utils/emailTemplates");
 
 const registerUser = async (req, res) => {
-  const { name, email, password, passwordConfirmation } = req.body;
+  const { name, email, password, confirmPassword } = req.body;
 
   try {
-    if (password !== passwordConfirmation) {
+    if (password !== confirmPassword) {
       return res.status(400).json({ message: "Passwords do not match" });
     }
 
@@ -86,7 +86,9 @@ const verifyEmail = async (req, res) => {
 
     res.status(200).json({
       status: "success",
-      message: "Email verified successfully",
+      data: {
+        token: generateToken(user._id),
+      },
     });
   } catch (error) {
     handleRequestAndServerErrors(error, res, 500, "failed", "Server Error");
@@ -148,7 +150,7 @@ const login = async (req, res) => {
   const { email, password } = req.body;
 
   try {
-    const user = await findUserByEmail(email);
+    const user = await findUserByEmail(email, res);
 
     if (!user.verified) {
       return res.status(400).json({
