@@ -6,7 +6,7 @@ const authMiddleware = async (req, res, next) => {
 
   if (
     req.headers.authorization &&
-    req.headers.authMiddleware.startsWith("Bearer")
+    req.headers.authorization.startsWith("Bearer")
   ) {
     try {
       token = req.headers.authorization.split(" ")[1];
