@@ -24,7 +24,7 @@ const userSchema = new mongoose.Schema({
       // Return null if no profile picture exists
       if (!value) return null;
       // Ensure the path uses a URL-friendly format
-      return `/uploads/${value.replace(/^.*[\\/]/, "")}`;
+      return `uploads/${value.replace(/^.*[\\/]/, "")}`;
     },
   },
   verified: {

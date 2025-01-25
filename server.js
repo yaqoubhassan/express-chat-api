@@ -1,4 +1,5 @@
 const express = require("express");
+const path = require("path");
 const mongoose = require("mongoose");
 const dotenv = require("dotenv");
 const cors = require("cors");
@@ -18,9 +19,12 @@ mongoose
   .then(() => console.log("MongoDB Connected!"))
   .catch((err) => console.log(err));
 
+app.use("/uploads", express.static(path.join(__dirname, "uploads")));
 app.use("/api/auth", authRoutes);
 app.use("/api/messages", messageRoute);
 app.use("/api/users", userRoute);
 
 const port = process.env.PORT || 3000;
-app.listen(port, () => console.log(`Server running on port ${port}!`));
+app.listen(port, "0.0.0.0", () =>
+  console.log(`Server running on port ${port}!`)
+);
