@@ -20,6 +20,7 @@ const userSchema = new mongoose.Schema({
   },
   avatar: {
     type: String,
+    default: "assets/images/avatar.png",
     get: (value) => {
       // Return null if no profile picture exists
       if (!value) return null;

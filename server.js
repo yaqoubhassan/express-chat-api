@@ -20,6 +20,7 @@ mongoose
   .catch((err) => console.log(err));
 
 app.use("/uploads", express.static(path.join(__dirname, "uploads")));
+app.use("/assets", express.static(path.join(__dirname, "assets")));
 app.use("/api/auth", authRoutes);
 app.use("/api/messages", messageRoute);
 app.use("/api/users", userRoute);
