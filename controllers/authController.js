@@ -153,9 +153,42 @@ const login = async (req, res) => {
     const user = await findUserByEmail(email, res);
 
     if (!user.verified) {
+      // Check if the previous OTP is less than or equal to 6 minutes old
+      const currentTime = Date.now();
+      const otpAge = (currentTime - new Date(user.otpExpires).getTime()) / 1000; // in seconds
+
+      if (otpAge <= 360) {
+        // Resend the existing OTP
+        const emailHtml = emailVerificationTemplate(user.otp, user.otpExpires);
+
+        await sendEmail(email, "Resend Verification Code", emailHtml);
+
+        return res.status(400).json({
+          status: "error",
+          message:
+            "Please verify your email. A verification code has been resent.",
+          data: {
+            email: user.email,
+          },
+        });
+      }
+
+      // Generate a new OTP if the previous one is older than 6 minutes
+      const { otp, otpExpires } = generateOtp();
+      user.otp = otp;
+      user.otpExpires = otpExpires;
+      await user.save();
+
+      const emailHtml = emailVerificationTemplate(otp, otpExpires);
+      await sendEmail(email, "Verify Your Email", emailHtml);
+
       return res.status(400).json({
         status: "error",
-        message: "Please verify email before logging in.",
+        message:
+          "Please verify your email. A new verification code has been sent.",
+        data: {
+          email: user.email,
+        },
       });
     }
 
