@@ -126,4 +126,62 @@ const updateUserProfile = async (req, res) => {
   }
 };
 
-module.exports = { getUserProfile, updateUserProfile };
+const getAllUsers = async (req, res) => {
+  try {
+    // Extract query parameters for pagination
+    const page = parseInt(req.query.page, 10) || 1;
+    const limit = parseInt(req.query.limit, 10) || 10;
+    const skip = (page - 1) * limit;
+
+    // Base URL for constructing avatar paths
+    const baseUrl = `${req.protocol}://${req.get("host")}`;
+
+    // Fetch users with pagination
+    const users = await User.find({})
+      .skip(skip)
+      .limit(limit)
+      .select("name email avatar createdAt") // Select necessary fields
+      .lean(); // Convert MongoDB documents to plain objects
+
+    // Format user avatars
+    const formattedUsers = users.map((user) => {
+      if (user.avatar) {
+        // Extract relative path and construct the full URL
+        const relativePath = path.relative(
+          path.join(__dirname, ".."), // Adjust this path to match your `public/uploads` directory
+          user.avatar
+        );
+        user.avatar = `${baseUrl}/${relativePath.replace(/\\/g, "/")}`;
+      } else {
+        // Use default avatar if no avatar exists
+        user.avatar = `${baseUrl}/public/default-avatar.png`;
+      }
+      return user;
+    });
+
+    // Get total count of users for pagination metadata
+    const totalUsers = await User.countDocuments();
+    const totalPages = Math.ceil(totalUsers / limit);
+
+    // Return paginated response
+    res.status(200).json({
+      success: true,
+      data: formattedUsers,
+      meta: {
+        currentPage: page,
+        totalPages,
+        totalUsers,
+        limit,
+      },
+    });
+  } catch (error) {
+    console.error("Error fetching users:", error); // Log the error for debugging
+    res.status(500).json({
+      success: false,
+      message: "An unexpected error occurred",
+      error: error.message,
+    });
+  }
+};
+
+module.exports = { getUserProfile, updateUserProfile, getAllUsers };
