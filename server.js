@@ -4,8 +4,9 @@ const mongoose = require("mongoose");
 const dotenv = require("dotenv");
 const cors = require("cors");
 const authRoutes = require("./routes/authRoutes");
-const messageRoute = require("./routes/messageRoute");
-const userRoute = require("./routes/userRoutes");
+const messageRoutes = require("./routes/messageRoutes");
+const conversationRoutes = require("./routes/conversationRoutes");
+const userRoutes = require("./routes/userRoutes");
 
 dotenv.config({ path: "./config.env" });
 const app = express();
@@ -20,10 +21,12 @@ mongoose
   .catch((err) => console.log(err));
 
 app.use("/uploads", express.static(path.join(__dirname, "uploads")));
-app.use("/assets", express.static(path.join(__dirname, "assets")));
+app.use("/public", express.static(path.join(__dirname, "public")));
+
 app.use("/api/auth", authRoutes);
-app.use("/api/messages", messageRoute);
-app.use("/api/users", userRoute);
+app.use("/api/messages", messageRoutes);
+app.use("/api/conversations", conversationRoutes);
+app.use("/api/users", userRoutes);
 
 const port = process.env.PORT || 3000;
 app.listen(port, "0.0.0.0", () =>
