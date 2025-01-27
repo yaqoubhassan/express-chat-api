@@ -84,7 +84,7 @@ const getMessagesByConversationId = async (req, res) => {
       conversationId: req.params.conversationId,
     })
       .populate("sender", "name email")
-      .sort({ createdAt: -1 }) // Sort by most recent
+      .sort({ createdAt: 1 }) // Sort by most recent
       .skip(skip)
       .limit(Number(limit));
 
