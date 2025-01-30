@@ -28,10 +28,8 @@ const sendMessage = async (req, res) => {
       content,
     });
     await message.save();
-    // console.log("created message: ", message);
 
     await message.populate("sender", "name email avatar");
-    // console.log("formatted Message: ", formattedMessage);
     const baseUrl = `${req.protocol}://${req.get("host")}`;
 
     // Update conversation with the latest message details
@@ -71,35 +69,6 @@ const sendMessage = async (req, res) => {
     errorHandler(error, res, 500, "failed", "Failed to send message");
   }
 };
-
-// const markMessageAsRead = async (req, res) => {
-//   try {
-//     const message = await Message.findById(req.params.messageId);
-
-//     if (!message) {
-//       return res
-//         .status(404)
-//         .json({ status: "error", message: "Message not found" });
-//     }
-
-//     if (message.sender.toString() === req.user.id) {
-//       return res
-//         .status(403)
-//         .json({ status: "error", message: "Cannot mark own message as read" });
-//     }
-
-//     message.read = true;
-//     await message.save();
-
-//     res.status(200).json({
-//       status: "success",
-//       message: "Message marked as read",
-//     });
-//   } catch (error) {
-//     console.error(error);
-//     res.status(500).json({ status: "failed", message: "Server Error" });
-//   }
-// };
 
 const markMessageAsRead = async (req, res) => {
   try {
