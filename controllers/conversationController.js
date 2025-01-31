@@ -75,28 +75,44 @@ const getConversations = async (req, res) => {
   }
 };
 
-const getMessagesByConversationId = async (req, res) => {
+const getMessagesByUserId = async (req, res) => {
   try {
-    const { page = 1, limit = 20 } = req.query; // Default to page 1, 20 messages per page
+    const { userId } = req.params; // User ID of the chat participant
+    const { page = 1, limit = 20 } = req.query;
     const skip = (page - 1) * limit;
 
-    const messages = await Message.find({
-      conversationId: req.params.conversationId,
-    })
+    // Get the logged-in user ID
+    const loggedInUserId = req.user.id; // Assuming authentication middleware
+
+    // Find the conversation between logged-in user and the given userId
+    const conversation = await Conversation.findOne({
+      participants: { $all: [loggedInUserId, userId] },
+    });
+
+    if (!conversation) {
+      return res.status(404).json({
+        status: "failed",
+        message: "No conversation found",
+      });
+    }
+
+    // Fetch messages for the found conversation
+    const messages = await Message.find({ conversationId: conversation._id })
       .populate("sender", "name email")
-      .sort({ createdAt: 1 }) // Sort by most recent
+      .sort({ createdAt: 1 })
       .skip(skip)
       .limit(Number(limit));
 
     const totalMessages = await Message.countDocuments({
-      conversationId: req.params.conversationId,
+      conversationId: conversation._id,
     });
 
     res.status(200).json({
       status: "success",
       data: messages,
+      conversationId: conversation._id, // Send back conversationId for reference
       total: totalMessages,
-      hasMore: skip + messages.length < totalMessages, // Whether more pages exist
+      hasMore: skip + messages.length < totalMessages,
     });
   } catch (error) {
     console.error(error);
@@ -104,4 +120,4 @@ const getMessagesByConversationId = async (req, res) => {
   }
 };
 
-module.exports = { getConversations, getMessagesByConversationId };
+module.exports = { getConversations, getMessagesByUserId };
