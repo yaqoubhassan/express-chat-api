@@ -133,11 +133,14 @@ const getAllUsers = async (req, res) => {
     const limit = parseInt(req.query.limit, 10) || 10;
     const skip = (page - 1) * limit;
 
+    // Get the logged-in user's ID (ensure it's properly set in the request object)
+    const loggedInUserId = req.user?.id;
+
     // Base URL for constructing avatar paths
     const baseUrl = `${req.protocol}://${req.get("host")}`;
 
-    // Fetch users with pagination
-    const users = await User.find({})
+    // Fetch users with pagination, excluding the logged-in user
+    const users = await User.find({ _id: { $ne: loggedInUserId } }) // Exclude the logged-in user
       .skip(skip)
       .limit(limit)
       .select("name email avatar createdAt") // Select necessary fields
@@ -159,8 +162,10 @@ const getAllUsers = async (req, res) => {
       return user;
     });
 
-    // Get total count of users for pagination metadata
-    const totalUsers = await User.countDocuments();
+    // Get total count of users excluding the logged-in user
+    const totalUsers = await User.countDocuments({
+      _id: { $ne: loggedInUserId },
+    });
     const totalPages = Math.ceil(totalUsers / limit);
 
     // Return paginated response
