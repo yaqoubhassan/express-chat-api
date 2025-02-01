@@ -55,6 +55,7 @@ const io = require("socket.io")(server, {
   },
 });
 
+require("./realtime")(io);
 io.on("connection", (socket) => {
   console.log(`🌐 New WebSocket connection: ${socket.id}`);
 
@@ -66,12 +67,12 @@ io.on("connection", (socket) => {
   });
 
   // Handle new messages
-  // socket.on("sendMessage", (data) => {
-  //   if (data.receiverId && data.message) {
-  //     console.log(`📩 Message sent to ${data.receiverId}`);
-  //     io.to(data.receiverId).emit("message", data); // Emit to receiver
-  //   }
-  // });
+  socket.on("sendMessage", (data) => {
+    if (data.receiverId && data.message) {
+      console.log(`📩 Message sent to ${data.receiverId}`);
+      io.to(data.receiverId).emit("message", data); // Emit to receiver
+    }
+  });
 
   // Handle typing events
   socket.on("typing", ({ senderId, receiverId }) => {
