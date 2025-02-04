@@ -9,8 +9,10 @@ module.exports = (io) => {
     }
 
     socket.on("disconnect", () => {
-      onlineUsers.delete(userId);
-      io.emit("userStatusChange", Array.from(onlineUsers.keys()));
+      if (userId && onlineUsers.has(userId)) {
+        onlineUsers.delete(userId);
+        io.emit("userStatusChange", Array.from(onlineUsers.keys()));
+      }
     });
   });
 };

@@ -1,6 +1,7 @@
 const Conversation = require("../models/conversationModel");
 const Message = require("../models/messageModel");
 const path = require("path");
+const User = require("../models/userModel");
 
 const getConversations = async (req, res) => {
   const userId = req.user.id; // Authenticated user's ID
@@ -77,7 +78,7 @@ const getConversations = async (req, res) => {
 
 const getMessagesByUserId = async (req, res) => {
   try {
-    const { userId } = req.params; // User ID of the chat participant
+    const { userId } = req.params; // ID of the chat participant
     const { page = 1, limit = 20 } = req.query;
     const skip = (page - 1) * limit;
 
@@ -107,12 +108,16 @@ const getMessagesByUserId = async (req, res) => {
       conversationId: conversation._id,
     });
 
+    // Fetch the receiver's active status
+    const receiver = await User.findById(userId).select("activeStatus");
+
     res.status(200).json({
       status: "success",
       data: messages,
       conversationId: conversation._id, // Send back conversationId for reference
       total: totalMessages,
       hasMore: skip + messages.length < totalMessages,
+      activeStatus: receiver?.activeStatus || null, // Include user's active status
     });
   } catch (error) {
     console.error(error);

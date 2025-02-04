@@ -7,6 +7,7 @@ const authRoutes = require("./routes/authRoutes");
 const messageRoutes = require("./routes/messageRoutes");
 const conversationRoutes = require("./routes/conversationRoutes");
 const userRoutes = require("./routes/userRoutes");
+const User = require("./models/userModel");
 
 // Load environment variables
 dotenv.config({ path: "./config.env" });
@@ -59,6 +60,14 @@ require("./realtime")(io);
 io.on("connection", (socket) => {
   console.log(`🌐 New WebSocket connection: ${socket.id}`);
 
+  const userId = socket.handshake.query.userId;
+
+  if (userId) {
+    console.log("userId: ", userId);
+    // Mark user as online
+    User.findByIdAndUpdate(userId, { activeStatus: new Date() }).exec();
+  }
+
   // User joins a room based on user ID
   socket.on("joinRoom", (userId) => {
     if (!userId) return;
@@ -88,8 +97,11 @@ io.on("connection", (socket) => {
   });
 
   // Handle disconnection
-  socket.on("disconnect", () => {
+  socket.on("disconnect", async () => {
     console.log(`❌ WebSocket disconnected: ${socket.id}`);
+    if (userId) {
+      await User.findByIdAndUpdate(userId, { activeStatus: new Date() }).exec();
+    }
   });
 });
 
