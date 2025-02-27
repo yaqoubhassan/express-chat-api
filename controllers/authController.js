@@ -151,7 +151,6 @@ const login = async (req, res) => {
 
   try {
     const user = await findUserByEmail(email);
-    console.log("User is: ", user);
 
     if (!user.verified) {
       // Check if the previous OTP is less than or equal to 6 minutes old
