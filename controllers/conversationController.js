@@ -25,29 +25,48 @@ const getConversations = async (req, res) => {
       .populate("participants", "name email avatar") // Populate participant details
       .lean(); // Convert MongoDB documents to plain objects
 
-    // Format participant avatars
-    const formattedConversations = conversations.map((conversation) => {
-      conversation.participants = conversation.participants.map(
-        (participant) => {
-          if (participant.avatar) {
-            // Extract relative path and construct the full URL
-            const relativePath = path.relative(
-              path.join(__dirname, ".."), // Adjust this path to match your `public/uploads` directory
-              participant.avatar
-            );
-            participant.avatar = `${baseUrl}/${relativePath.replace(
-              /\\/g,
-              "/"
-            )}`;
-          } else {
-            // Use default avatar if no avatar exists
-            participant.avatar = `${baseUrl}/public/default-avatar.png`;
+    // Format participant avatars and count unread messages
+    const formattedConversations = await Promise.all(
+      conversations.map(async (conversation) => {
+        // Count unread messages for this user in this conversation
+        const unreadCount = await Message.countDocuments({
+          conversationId: conversation._id,
+          sender: { $ne: userId }, // Not sent by the current user
+          read: false, // Unread messages
+        });
+
+        const lastMessage = await Message.findOne({
+          conversationId: conversation._id,
+        }).sort({ createdAt: -1 });
+
+        conversation.unreadCount = unreadCount;
+        conversation.lastMessageSender = lastMessage
+          ? lastMessage.sender
+          : null;
+        conversation.lastMessageRead = lastMessage ? lastMessage.read : false;
+
+        conversation.participants = conversation.participants.map(
+          (participant) => {
+            if (participant.avatar) {
+              // Extract relative path and construct the full URL
+              const relativePath = path.relative(
+                path.join(__dirname, ".."),
+                participant.avatar
+              );
+              participant.avatar = `${baseUrl}/${relativePath.replace(
+                /\\/g,
+                "/"
+              )}`;
+            } else {
+              // Use default avatar if no avatar exists
+              participant.avatar = `${baseUrl}/public/default-avatar.png`;
+            }
+            return participant;
           }
-          return participant;
-        }
-      );
-      return conversation;
-    });
+        );
+        return conversation;
+      })
+    );
 
     // Get total count of conversations for pagination metadata
     const totalConversations = await Conversation.countDocuments({
@@ -67,7 +86,7 @@ const getConversations = async (req, res) => {
       },
     });
   } catch (error) {
-    console.error("Error fetching conversations:", error); // Log the error for debugging
+    console.error("Error fetching conversations:", error);
     res.status(500).json({
       success: false,
       message: "An unexpected error occurred",
