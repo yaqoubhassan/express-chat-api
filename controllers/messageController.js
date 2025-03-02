@@ -26,6 +26,7 @@ const sendMessage = async (req, res) => {
       conversationId: conversation._id,
       sender: senderId,
       content,
+      read: false, // Ensure the message starts as unread
     });
     await message.save();
 
@@ -36,6 +37,13 @@ const sendMessage = async (req, res) => {
     conversation.lastMessage = content;
     conversation.lastMessageAt = Date.now();
     await conversation.save();
+
+    // Get current unread count for the receiver
+    const unreadCount = await Message.countDocuments({
+      conversationId: conversation._id,
+      sender: senderId, // Messages from current sender
+      read: false, // That are unread
+    });
 
     // Emit real-time event via WebSocket using rooms
     const io = req.app.get("socketio");
@@ -51,6 +59,7 @@ const sendMessage = async (req, res) => {
       receiver: receiverId,
       content,
       createdAt: message.createdAt,
+      unreadCount: unreadCount, // Include the unread count in the response
     };
 
     // Notify the receiver and sender by emitting to their respective rooms
@@ -63,6 +72,7 @@ const sendMessage = async (req, res) => {
       data: {
         message,
         conversation,
+        unreadCount, // Include unread count in API response
       },
     });
   } catch (error) {
