@@ -17,6 +17,7 @@ const sendMessage = async (req, res) => {
         participants: [senderId, receiverId],
         lastMessage: content,
         lastMessageAt: Date.now(),
+        // Note: we'll set lastMessageId after creating the message
       });
       await conversation.save();
     }
@@ -36,6 +37,7 @@ const sendMessage = async (req, res) => {
     // Update conversation with the latest message details
     conversation.lastMessage = content;
     conversation.lastMessageAt = Date.now();
+    conversation.lastMessageId = message._id; // Set the lastMessageId to the newly created message
     await conversation.save();
 
     // Get current unread count for the receiver
@@ -80,6 +82,112 @@ const sendMessage = async (req, res) => {
   }
 };
 
+// Controller function for updating a message
+const updateMessage = async (req, res) => {
+  const { messageId } = req.params; // Message ID
+  const { content } = req.body;
+  const userId = req.user.id;
+
+  if (!content || content.trim() === "") {
+    return res.status(400).json({
+      status: "failed",
+      errors: [
+        { msg: "Content is required", param: "content", location: "body" },
+      ],
+    });
+  }
+
+  try {
+    // Find the message and ensure it belongs to the current user
+    const message = await Message.findById(messageId);
+
+    if (!message) {
+      return res.status(404).json({
+        status: "failed",
+        message: "Message not found",
+      });
+    }
+
+    // Check if user is the sender of the message
+    if (message.sender.toString() !== userId) {
+      return res.status(403).json({
+        status: "failed",
+        message: "You can only edit your own messages",
+      });
+    }
+
+    // Check if the message is too old to edit (e.g., 24 hours)
+    const messageAge = Date.now() - new Date(message.createdAt).getTime();
+    const MAX_EDIT_AGE = 24 * 60 * 60 * 1000; // 24 hours in milliseconds
+
+    if (messageAge > MAX_EDIT_AGE) {
+      return res.status(400).json({
+        status: "failed",
+        message: "Message is too old to edit",
+      });
+    }
+
+    // Update the message
+    message.content = content;
+    message.isEdited = true;
+    message.updatedAt = Date.now();
+    await message.save();
+
+    await message.populate("sender", "name email avatar");
+    const baseUrl = `${req.protocol}://${req.get("host")}`;
+
+    // Get the conversation
+    const conversation = await Conversation.findById(message.conversationId);
+
+    // Update the conversation's last message if this was the last message
+    // Use the lastMessageId field to check if this is the last message
+    if (
+      conversation.lastMessageId &&
+      conversation.lastMessageId.toString() === messageId
+    ) {
+      conversation.lastMessage = content;
+      await conversation.save();
+    }
+
+    // Emit socket event to notify about the message update
+    const io = req.app.get("socketio");
+    const receiverId = conversation.participants.find(
+      (p) => p.toString() !== userId
+    );
+
+    const updateData = {
+      id: message._id,
+      conversationId: message.conversationId,
+      content,
+      // read: false,
+      edited: true,
+      editedAt: message.editedAt,
+      senderAvatar: message.sender.avatar
+        ? `${baseUrl}/${message.sender.avatar}`
+        : `${baseUrl}/public/default-avatar.png`,
+    };
+
+    // Send to both sender and receiver
+    // io.to(receiverId.toString()).emit("messageUpdated", updateData);
+    // io.to(userId).emit("messageUpdated", updateData);
+    io.to(receiverId.toString()).emit("messageUpdated", {
+      messageId: message._id, // Make sure to use messageId instead of id
+      content,
+      receiverId: userId, // Include who sent the update
+    });
+
+    // Respond with success
+    res.status(200).json({
+      status: "success",
+      data: {
+        message,
+      },
+    });
+  } catch (error) {
+    errorHandler(error, res, 500, "failed", "Failed to update message");
+  }
+};
+
 const markMessageAsRead = async (req, res) => {
   try {
     const message = await Message.findById(req.params.messageId);
@@ -117,4 +225,4 @@ const markMessageAsRead = async (req, res) => {
   }
 };
 
-module.exports = { sendMessage, markMessageAsRead };
+module.exports = { sendMessage, updateMessage, markMessageAsRead };
